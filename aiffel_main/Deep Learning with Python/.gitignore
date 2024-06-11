@@ -1,1 +1,7 @@
-/aclImdb/
+aclImdb/
+mnist_kt_test/
+visualizing-ml-trials.ipynb
+wandb/
+tb_logs/
+untitled_project/
+data/
