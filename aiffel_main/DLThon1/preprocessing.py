@@ -37,3 +37,32 @@ def preprocess_sentence(sentence, stopwords=None):
         sentence = ' '.join(filtered_words)
 
     return sentence
+
+def augmentation(data):
+    import pandas as pd
+    def split_text(text):
+        half_index = len(text) // 2
+        return text[:half_index], text[half_index:]
+    
+    new_data = {
+        'idx': [],
+        'class': [],
+        'conversation': [],
+        'label': []
+        }
+
+    for idx, row in data.iterrows():
+        part1, part2 = split_text(row['conversation'])
+        new_data['idx'].append(row['idx'])
+        new_data['class'].append(row['class'])
+        new_data['conversation'].append(part1)
+        new_data['label'].append(row['label'])
+        
+        new_data['idx'].append(row['idx'])
+        new_data['class'].append(row['class'])
+        new_data['conversation'].append(part2)
+        new_data['label'].append(row['label'])
+
+    new_df = pd.DataFrame(new_data)
+    
+    return new_df
