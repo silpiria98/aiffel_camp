@@ -9,6 +9,8 @@
 # VOCAB_SIZE = tokenizer.vocab_size #단어사전 크기
 # MAX_LENGTH = X.shape[1] # maxlen
 
+import tensorflow as tf
+
 # 포지셔널 인코딩 레이어
 class PositionalEncoding(tf.keras.layers.Layer):
 
