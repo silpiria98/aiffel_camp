@@ -14,11 +14,12 @@
 import re
 
 def preprocess_sentence(sentence, stopwords=None):
+    # 개행자 삭제
+    sentence = re.sub(r'[\n\r]', ' ', sentence)
+    
     # 단어와 구두점(punctuation) 사이의 거리를 만듭니다.
     # 예를 들어서 "I am a student." => "I am a student ."와 같이
-    # student와 온점 사이에 거리를 만듭니다.
-    sentence = sentence.replace("\n", "")  # 구분자
-    sentence = sentence.replace("\r", "")  # 구분자
+    # student와 온점 사이에 거리를 만듭니다. 
     sentence = re.sub(r"([?.!,])", r" \1 ", sentence)
     sentence = re.sub(r'[" "]+', " ", sentence)
 
@@ -28,6 +29,7 @@ def preprocess_sentence(sentence, stopwords=None):
 
     # '키키'와 같이 연속된 키를 제거합니다.
     sentence = re.sub(r'키{2,}', '', sentence)
+    sentence = re.sub(r'\b키\b', '', sentence)
 
     if stopwords:
         words = sentence.split()
