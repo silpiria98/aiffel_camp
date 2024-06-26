@@ -49,7 +49,8 @@ class PositionalEncoding(tf.keras.layers.Layer):
     
     def get_config(self):
         return {
-            'pos_encoding': self.pos_encoding,
+            'position': self.pos_encoding.shape[1],
+            'd_model': self.pos_encoding.shape[2],
         }
         
 def scaled_dot_product_attention(query, key, value, mask):
@@ -135,11 +136,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         return {
             'num_heads': self.num_heads,
             'd_model': self.d_model,
-            'depth': self.depth,
-            'query_dense': self.query_dense,
-            'key_dense': self.key_dense,
-            'value_dense': self.value_dense,
-            'dense': self.dense,
+            'depth': self.depth
         }
 
 # 숫자가 0인 부분을 체크한 벡터를 리턴
