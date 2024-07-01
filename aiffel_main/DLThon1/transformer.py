@@ -136,7 +136,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         return {
             'num_heads': self.num_heads,
             'd_model': self.d_model,
-            'depth': self.depth
+            'depth': self.depth,
         }
 
 # 숫자가 0인 부분을 체크한 벡터를 리턴
@@ -189,6 +189,7 @@ def encoder_layer(units, d_model, num_heads, dropout, name="encoder_layer"):
     return tf.keras.Model(
       inputs=[inputs, padding_mask], outputs=outputs, name=name)
 
+
 # 전체 인코더. 인코딩 레이어를 여러개 
 def encoder(vocab_size,
             num_layers,
@@ -197,7 +198,7 @@ def encoder(vocab_size,
             num_heads,
             dropout,
             name="encoder"):
-    inputs = tf.keras.Input(shape=(None,), name="inputs")
+    inputs = tf.keras.Input(shape=(None,),name="inputs")
 
     # 패딩 마스크 사용
     padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
@@ -223,6 +224,7 @@ def encoder(vocab_size,
 
     return tf.keras.Model(
       inputs=[inputs, padding_mask], outputs=outputs, name=name)
+
 
 def transformer(vocab_size,
                 num_layers,
