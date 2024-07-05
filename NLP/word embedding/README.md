@@ -3,8 +3,7 @@
 
 
 - [x] **1. 주어진 문제를 해결하는 완성된 코드가 제출되었나요? (완성도)**
-
-        ![image](https://github.com/silpiria98/aiffel_camp/assets/35359870/33821fe3-fddd-4503-9c2e-2ec9791be234)
+      ![image](https://github.com/silpiria98/aiffel_camp/assets/35359870/33821fe3-fddd-4503-9c2e-2ec9791be234)
 
 **=> tf-idf화 하고, 대표 단어를 적절히 출력하고, weat 스코어도 잘 구해서 히트맵으로 잘 시각화까지 했습니다.**
 
