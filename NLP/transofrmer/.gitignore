@@ -1,2 +1,5 @@
 data/
 model/
+*.temp
+*_spm*
+
