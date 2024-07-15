@@ -384,16 +384,17 @@ def loss_function(
 
 @tf.function()
 def train_step(src, tgt, model, optimizer):
+    tgt_in = tgt[:, :-1]
     gold = tgt[:, 1:]
 
-    enc_mask, dec_enc_mask, dec_mask = generate_masks(src, tgt)
+    enc_mask, dec_enc_mask, dec_mask = generate_masks(src, tgt_in)
 
     # 계산된 loss에 tf.GradientTape()를 적용해 학습을 진행합니다.
     with tf.GradientTape() as tape:
         predictions, enc_attns, dec_attns, dec_enc_attns = model(
-            src, tgt, enc_mask, dec_enc_mask, dec_mask
+            src, tgt_in, enc_mask, dec_enc_mask, dec_mask
         )
-        loss = loss_function(gold, predictions[:, :-1])
+        loss = loss_function(gold, predictions)
 
     # 최종적으로 optimizer.apply_gradients()가 사용됩니다.
     variables = model.trainable_variables
@@ -403,6 +404,37 @@ def train_step(src, tgt, model, optimizer):
     return loss, enc_attns, dec_attns, dec_enc_attns
 
 
+@tf.function()
+def valid_step(src, tgt, model):
+    tgt_in = tgt[:, :-1]
+    gold = tgt[:, 1:]
+
+    enc_mask, dec_enc_mask, dec_mask = generate_masks(src, tgt_in)
+
+    # GradientTape 없이
+    predictions, enc_attns, dec_attns, dec_enc_attns = model(
+        src, tgt_in, enc_mask, dec_enc_mask, dec_mask
+    )
+
+    # 검증 손실 계산
+    loss = loss_function(gold, predictions)
+
+    return loss, enc_attns, dec_attns, dec_enc_attns
+
+
+def validate(dataset, model):
+    total_loss = 0
+    num_batches = 0
+
+    for src, tgt in dataset:
+        loss, _, _, _ = valid_step(src, tgt, model)
+        total_loss += loss
+        num_batches += 1
+
+    average_loss = total_loss / num_batches
+    return average_loss
+
+
 def train(
     model,
     dataset,
@@ -410,10 +442,11 @@ def train(
     enc_tokenizer,
     dec_tokenizer,
     type=None,
+    show_translate=False,
     example_sentence=None,
     plot_attention=False,
+    valid_data=None,
 ):
-    import random
     import tqdm
 
     learning_rate = LearningRateScheduler(int(model.d_model.numpy()))
@@ -443,6 +476,10 @@ def train(
             t.set_description_str("Epoch %2d" % (epoch + 1))  # tqdm
             t.set_postfix_str("Loss %.4f" % (total_loss.numpy() / (batch + 1)))  # tqdm
 
+        if valid_data:
+            loss_val = validate(valid_data, model)
+            print("Valid Loss %.4f" % (loss_val.numpy()))
+
         if example_sentence:
             if type == "sp":
                 translator = translate_sp()
@@ -454,6 +491,7 @@ def train(
                     model,
                     enc_tokenizer,
                     dec_tokenizer,
+                    show_translate=show_translate,
                     plot_attention=plot_attention,
                 )
 
@@ -515,14 +553,21 @@ class translate_sp:
 
 class translate_mecab:
     def translate(
-        self, sentence, model, src_tokenizer, tgt_tokenizer, plot_attention=False
+        self,
+        sentence,
+        model,
+        src_tokenizer,
+        tgt_tokenizer,
+        show_translate=False,
+        plot_attention=False,
     ):
         pieces, result, enc_attns, dec_attns, dec_enc_attns = self.evaluate(
             sentence, model, src_tokenizer, tgt_tokenizer, len(sentence)
         )
         result = "".join(result)
-        # print("Input: %s" % (sentence))
-        # print("Predicted translation: {}".format(result))
+        if show_translate:
+            print("Input: %s" % (sentence))
+            print("Predicted translation: {}".format(result))
 
         if plot_attention:
             visualize_attention(
@@ -554,11 +599,11 @@ class translate_mecab:
                 tf.argmax(tf.math.softmax(predictions, axis=-1)[0, -1]).numpy().item()
             )
 
+            ids.append(predicted_id)
             if tgt_tokenizer.word_index["<end>"] == predicted_id:
                 result = tgt_tokenizer.sequences_to_texts([ids])
                 return pieces, result, enc_attns, dec_attns, dec_enc_attns
 
-            ids.append(predicted_id)
             output = tf.concat([output, tf.expand_dims([predicted_id], 0)], axis=-1)
 
         result = tgt_tokenizer.sequences_to_texts([ids])
@@ -619,89 +664,3 @@ def plot_attention(attention, sentence, predicted_sentence):
     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
     plt.show()
-
-
-# blue 점수
-def eval_bleu_single(
-    model,
-    src_sentence,
-    tgt_sentence,
-    src_tokenizer,
-    tgt_tokenizer,
-    tokeninze_type,
-    max_len,
-    verbose=True,
-):
-    from nltk.translate.bleu_score import sentence_bleu
-    from nltk.translate.bleu_score import SmoothingFunction
-
-    if tokeninze_type == "sp":
-        src_tokens = src_tokenizer.encode_as_ids(src_sentence)
-        tgt_tokens = tgt_tokenizer.encode_as_ids(tgt_sentence)
-        translator = translate_sp()
-    elif tokeninze_type == "mecab":
-        from konlpy.tag import Mecab
-
-        mecab = Mecab(dicpath=r"C:\mecab\share\mecab-ko-dic")
-        src_tokens = src_tokenizer.texts_to_sequences(src_sentence)
-        tgt_tokens = tgt_tokenizer.texts_to_sequences(tgt_sentence)
-        reference = mecab.morphs(tgt_sentence)
-        translator = translate_mecab()
-
-    if len(src_tokens) > max_len:
-        return None
-    if len(tgt_tokens) > max_len:
-        return None
-
-    # reference = tgt_sentence.split()
-
-    candidate = translator.translate(
-        src_sentence, model, src_tokenizer, tgt_tokenizer
-    ).split()
-
-    score = sentence_bleu(
-        [reference], candidate, smoothing_function=SmoothingFunction().method1
-    )
-
-    if verbose:
-        print("Source Sentence: ", src_sentence)
-        print("Model Prediction: ", candidate)
-        print("Real: ", reference)
-        print("Score: %lf\n" % score)
-
-    return score
-
-
-def eval_bleu(
-    model,
-    src_sentences,
-    tgt_sentence,
-    src_tokenizer,
-    tgt_tokenizer,
-    tokeninze_type,
-    max_len,
-    verbose=True,
-):
-    total_score = 0.0
-    sample_size = len(src_sentences)
-
-    from tqdm import tqdm
-
-    for idx in tqdm(range(sample_size)):
-        score = eval_bleu_single(
-            model,
-            src_sentences[idx],
-            tgt_sentence[idx],
-            src_tokenizer,
-            tgt_tokenizer,
-            tokeninze_type,
-            max_len,
-            verbose,
-        )
-        if not score:
-            continue
-
-        total_score += score
-
-    print("Num of Sample:", sample_size)
-    print("Total Score:", total_score / sample_size)
