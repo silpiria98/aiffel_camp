@@ -108,7 +108,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         # split_heads의 역순 진행
         combined_x = tf.transpose(x, [0, 2, 1, 3])
         combined_x = tf.reshape(
-            combined_x, (combined_x.shape[0], combined_x.shape[1], self.d_model)
+            combined_x, (combined_x.shape[0], -1, self.d_model)
         )
 
         return combined_x
@@ -607,6 +607,102 @@ class translate_mecab:
             output = tf.concat([output, tf.expand_dims([predicted_id], 0)], axis=-1)
 
         result = tgt_tokenizer.sequences_to_texts([ids])
+
+        return pieces, result, enc_attns, dec_attns, dec_enc_attns
+
+
+class translate:
+
+    def translate(
+        self,
+        sentence,
+        model,
+        src_tokenizer,
+        tgt_tokenizer,
+        src_tokenizer_type,
+        tgt_tokenizer_type,
+        show_translate=False,
+        plot_attention=False,
+    ):
+        pieces, result, enc_attns, dec_attns, dec_enc_attns = self.evaluate(
+            sentence,
+            model,
+            src_tokenizer,
+            tgt_tokenizer,
+            len(sentence),
+            src_tokenizer_type,
+            tgt_tokenizer_type,
+        )
+        result = "".join(result)
+        if show_translate:
+            print("Input: %s" % (sentence))
+            print("Predicted translation: {}".format(result))
+
+        if plot_attention:
+            visualize_attention(
+                pieces, result.split(), enc_attns, dec_attns, dec_enc_attns
+            )
+        return result
+
+    def evaluate(
+        self,
+        sentence,
+        model,
+        src_tokenizer,
+        tgt_tokenizer,
+        max_men,
+        src_tokenizer_type,
+        tgt_tokenizer_type,
+    ):
+        sentence = preprocess_sentence(sentence)
+
+        if src_tokenizer_type == "mecab":
+            from konlpy.tag import Mecab
+
+            mecab = Mecab(dicpath=r"C:\mecab\share\mecab-ko-dic")
+            pieces = mecab.morphs(sentence)
+            tokens = src_tokenizer.texts_to_sequences([pieces])
+        elif src_tokenizer_type == "sp":
+            pieces = [src_tokenizer.encode_as_pieces(sentence)]
+            tokens = [src_tokenizer.encode_as_ids(sentence)]
+
+        _input = tf.keras.preprocessing.sequence.pad_sequences(tokens, padding="post")
+
+        ids = []
+        if tgt_tokenizer_type == "mecab":
+            tgt_end_token_id = tgt_tokenizer.word_index["<end>"]
+            tgt_start_token_id = tgt_tokenizer.word_index["<start>"]
+            sequences_to_texts = tgt_tokenizer.sequences_to_texts()
+
+        elif tgt_tokenizer_type == "sp":
+            tgt_end_token_id = tgt_tokenizer.eos_id()
+            tgt_start_token_id = tgt_tokenizer.bos_id()
+            sequences_to_texts = tgt_tokenizer.decode_ids()
+
+        output = tf.expand_dims([tgt_start_token_id], 0)
+
+        for i in range(max_men):
+            enc_padding_mask, combined_mask, dec_padding_mask = generate_masks(
+                _input, output
+            )
+
+            predictions, enc_attns, dec_attns, dec_enc_attns = model(
+                _input, output, enc_padding_mask, combined_mask, dec_padding_mask
+            )
+
+            predicted_id = (
+                tf.argmax(tf.math.softmax(predictions, axis=-1)[0, -1]).numpy().item()
+            )
+
+            ids.append(predicted_id)
+            if predicted_id == tgt_end_token_id:
+
+                result = sequences_to_texts([ids])
+                return pieces, result, enc_attns, dec_attns, dec_enc_attns
+
+            output = tf.concat([output, tf.expand_dims([predicted_id], 0)], axis=-1)
+
+        result = sequences_to_texts([ids])
 
         return pieces, result, enc_attns, dec_attns, dec_enc_attns
 
