@@ -1,5 +1,5 @@
 # 베이스 이미지를 빌더로
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.9-slim AS builder
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.9-slim AS builder 
 
 # 작업 폴더 설정
 WORKDIR /app
