@@ -24,13 +24,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+  # data-generator:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: data-generator
+  #   depends_on:
+  #     postgres-server:
+  #       condition: service_healthy
+  #   command: [ "postgres-server" ]
 
-  data-generator:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: data-generator
-    depends_on:
-      postgres-server:
-        condition: service_healthy
-    command: [ "postgres-server" ]
+volumes:
+  postgres-data:
+
+
+networks:
+  default:
+    name: mlops-network

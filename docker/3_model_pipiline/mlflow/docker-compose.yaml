@@ -8,6 +8,8 @@ services:
             POSTGRES_USER: mlflowuser
             POSTGRES_PASSWORD: mlflowpassword
             POSTGRES_DB: mlflowdatabase
+        volumes:
+            - postgres-data:/var/lib/postgresql/data
         healthcheck:
             test:
                 [
@@ -33,6 +35,8 @@ services:
             MINIO_ROOT_USER: minio
             MINIO_ROOT_PASSWORD: miniostorage
         command: server /data/minio --console-address :9001
+        volumes:
+            - minio-data:/data/minio
         healthcheck:
             test: [ "CMD", "mc", "ready", "local" ]
             interval: 5s
@@ -66,3 +70,7 @@ services:
               --backend-store-uri postgresql://mlflowuser:mlflowpassword@mlflow-backend-store/mlflowdatabase \
               --default-artifact-root s3://mlflow/ \
               --host 0.0.0.0
+
+volumes:
+    postgres-data:
+    minio-data:
