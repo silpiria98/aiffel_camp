@@ -2,15 +2,16 @@
 
 네이버 영화 리뷰에 대한 긍부정을 판단하는 모델을 훈련하고 fastapi로 호스팅 하는 부분
 
+```mermaid
 flowchart LR
-subgraph mysql
-Database
-end
-Database-->train[Model train]
+    subgraph mysql
+    Database
+    end
+    Database-->train[Model train]
 
-subgraph Model[Model Development]
-train-->save[Model Save]
-end
+    subgraph Model[Model Development]
+    train-->save[Model Save]
+    end
 
     subgraph FastAPI
     deployment[Model Deployment] -->serve[Model Serving]
@@ -33,3 +34,4 @@ end
     Wandb
     Model
     end
+```
